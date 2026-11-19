@@ -217,3 +217,19 @@ def test_expiry_is_checked_after_database_waits(storage, monkeypatch, delayed_qu
     monkeypatch.setattr(ledger,'connect',DelayedLock)
     with pytest.raises(HTTPException) as expired: ledger.fulfill(tenant,body)
     assert expired.value.status_code == 409
+
+
+def test_additive_schema_and_original_record_survive_restart(storage):
+    # CI-only schema expansion double; production still uses the owner migration.
+    ledger=Ledger(storage);tenant=uuid4();body=Fulfill(**terms())
+    original=ledger.fulfill(tenant,body)
+    with ledger.connect() as db:
+        db.execute('ALTER TABLE contracts ADD COLUMN fixture_optional TEXT')
+    try:
+        Ledger(storage,migrate=True)
+        assert Ledger(storage).fulfill(tenant,body)==original
+        second=Ledger(storage).fulfill(tenant,Fulfill(**terms()))
+        assert second['id']!=original['id']
+    finally:
+        with ledger.connect() as db:
+            db.execute('ALTER TABLE contracts DROP COLUMN fixture_optional')
