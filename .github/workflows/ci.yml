@@ -44,7 +44,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build PR container without publication credentials
-        run: docker build -t "authority-ci:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" .
+        run: docker build --build-arg "SOURCE_REVISION=${GITHUB_SHA}" -t "authority-ci:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" .
       - name: Remove job-owned build tag
         if: always()
         run: docker image rm "authority-ci:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >/dev/null 2>&1 || true
@@ -65,7 +65,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Build container
-        run: docker build --label "org.opencontainers.image.revision=${GITHUB_SHA}" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t "authority-ci:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" .
+        run: docker build --build-arg "SOURCE_REVISION=${GITHUB_SHA}" --label "org.opencontainers.image.revision=${GITHUB_SHA}" --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" -t "authority-ci:${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" .
       - name: Publish moving TEST channel
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:

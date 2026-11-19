@@ -7,6 +7,7 @@ payment, or impersonate an AIuditor market writer.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+import hashlib
 import hmac
 import json
 import os
@@ -20,6 +21,12 @@ from pydantic import BaseModel, ConfigDict, Field, StrictInt
 
 PROTOCOL = "hypermesh-self-use-contract/1"
 SIGNER = "organization-self-use-authority"
+# Attribution describes this fixed self-use policy, not general policy execution.
+POLICY = {"protocol": PROTOCOL, "writer": "self-use", "financial": False,
+          "reserved_hours": 1, "meters": ["capacity_block", "wall_time"],
+          "replay": "preserve-original-expiry", "eligibility_owner": "plane"}
+POLICY_REVISION = hashlib.sha256(json.dumps(POLICY, sort_keys=True,
+    separators=(",", ":")).encode()).hexdigest()
 
 
 class Fulfill(BaseModel):
@@ -84,7 +91,7 @@ class Ledger:
                         "signed_by": SIGNER, "signed_at": clock.isoformat(),
                         "until": (clock + timedelta(hours=1)).isoformat(), "protocol": PROTOCOL,
                     }
-                    db.execute("INSERT INTO contracts VALUES (%s,%s,%s,%s,%s)", (str(tenant), str(body.lease_id), record["id"], request, json.dumps(record, sort_keys=True)))
+                    db.execute("INSERT INTO contracts (tenant,lease,id,request,record) VALUES (%s,%s,%s,%s,%s)", (str(tenant), str(body.lease_id), record["id"], request, json.dumps(record, sort_keys=True)))
                 db.execute("COMMIT")
                 return record
             except BaseException:
@@ -114,7 +121,9 @@ def create_app(*, dsn: str, token: str) -> FastAPI:
     @app.get("/v1/meta")
     def meta(x_internal_token: str | None = Header(default=None)):
         authenticate(x_internal_token)
-        return {"protocol": PROTOCOL, "writer": "self-use", "financial": False}
+        return {"protocol": PROTOCOL, "writer": "self-use", "financial": False,
+                "policy_revision": POLICY_REVISION, "policy": POLICY,
+                "source_revision": os.environ.get("CONTRACT_AUTHORITY_SOURCE_REVISION")}
 
     @app.post("/v1/contracts/fulfill")
     def fulfill(body: Fulfill, x_tenant_id: UUID = Header(), x_internal_token: str | None = Header(default=None)):

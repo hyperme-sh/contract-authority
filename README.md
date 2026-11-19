@@ -68,3 +68,6 @@ corrupt input fails without partial records. IDs, parties and timestamps remain
 unchanged. The legacy reader is outside the service package and runtime image.
 After accepting new PostgreSQL writes, rollback must retain this database; never
 return to an older file that lacks those contracts.
+
+Owner rollout checks and inactive binding prerequisites are defined in
+[the canary contract](docs/canary-contract.md).
