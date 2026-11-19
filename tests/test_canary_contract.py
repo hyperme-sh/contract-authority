@@ -69,3 +69,10 @@ def test_attributed_metadata_and_store_failure(monkeypatch):
     refusal(response.status_code,503)
     assert 'private' not in response.text and token not in response.text
     assert client.get('/health').status_code==503
+
+
+def test_no_original_comparison_is_not_reported_as_preserved():
+    tenant,terms,now,record=sample();binding=Binding('a'*40,enabled=True)
+    assert binding.decision(record,tenant=tenant,terms=terms,now=now)['expiry_preserved'] is False
+    with pytest.raises(Unavailable):
+        binding.decision(record,tenant=tenant,terms=terms.model_copy(update={'meters':['wall_time','wall_time']}),now=now)

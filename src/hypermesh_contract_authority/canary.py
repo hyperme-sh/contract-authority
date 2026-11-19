@@ -38,6 +38,8 @@ class Binding:
     def decision(self, value, *, tenant: UUID, terms: Fulfill, now: datetime, original=None):
         require(self.enabled is True, 'Authority canary binding disabled')
         require(now.tzinfo is not None, 'Timezone-aware observation required')
+        require(set(terms.meters) == {'wall_time', 'capacity_block'} and terms.reserved_hours == 1,
+                'Unsupported requested terms')
         require(isinstance(value, dict), 'Contract decision unavailable')
         try:
             start, end = (datetime.fromisoformat(value[k]) for k in ('signed_at', 'until'))
@@ -58,7 +60,7 @@ class Binding:
         except (KeyError, TypeError, ValueError) as exc:
             if isinstance(exc, Unavailable): raise
             raise Unavailable('Malformed contract decision') from None
-        return {'decision':'self-use', 'expiry_preserved':True}
+        return {'decision':'self-use', 'expiry_preserved':original is not None}
 
 
 def refusal(status, expected):
